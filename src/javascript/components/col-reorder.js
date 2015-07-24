@@ -146,7 +146,11 @@ function moveIdx(arr, from, toBorder) {
 
 
 
+
+
 function init(self, divHeader) {
+
+    var gridEvents = require('./events').gridEvents;
 
 
     var widths = self.getColumns().map(function(col) {
@@ -175,10 +179,11 @@ function init(self, divHeader) {
     document.body.appendChild(inserter);
 
 
-    document.addEventListener('mousemove', function(e) {
+    gridEvents.mousemove.addObserver(mousemove);
+    gridEvents.mouseup.addObserver(mouseup);
+    divHeader.addEventListener('mousedown', mousedown);
 
-        e.preventDefault();
-
+    function mousemove(e) {
         var xMovement, yMovement, movementString,
             left = headerRect.left,
             rangeFunc, normalizedBorders,
@@ -260,9 +265,10 @@ function init(self, divHeader) {
             divHeader.style.cursor = 'auto';
             resizingCols = false;
         }
-    }, true)
+    }
 
-    document.addEventListener('mouseup', function(e) {
+
+    function mouseup(e) {
         var reordered;
 
         e.preventDefault();
@@ -296,10 +302,10 @@ function init(self, divHeader) {
             return col.getWidth();
         });
 
-    })
+    }
 
 
-    divHeader.addEventListener('mousedown', function(e) {
+    function mousedown(e) {
 
         mouseDown = true;
 
@@ -359,7 +365,7 @@ function init(self, divHeader) {
         transform = dragHeader.style.transform;
 
         startingTrans = transform.match(/([^(]?\d+)/g) || [0, 0];
-    });
+    }
 
 }
 
