@@ -150,15 +150,17 @@ function init(self, divHeader) {
 
 
     var widths = self.getColumns().map(function(col) {
-        return col.getWidth();
-    }),
+            return col.getWidth();
+        }),
         resizeThresh = 5,
         fuzzyBorders = genFuzzyBorders(widths, resizeThresh),
         inserter = document.createElement('div'),
         headerCanvas = self.getHeaderCanvas(),
         headerRect = headerCanvas.getBoundingClientRect(),
         dragHeader, mouseDown, x, y, startingTrans, resizing,
-        resizingCols, clickedCol, borderHit, reordering;
+        resizingCols, clickedCol, borderHit, reordering,
+        lastX = null;
+
 
 
 
@@ -175,6 +177,8 @@ function init(self, divHeader) {
 
     document.addEventListener('mousemove', function(e) {
 
+        e.preventDefault();
+
         var xMovement, yMovement, movementString,
             left = headerRect.left,
             rangeFunc, normalizedBorders,
@@ -188,7 +192,7 @@ function init(self, divHeader) {
         fuzzyBorders = genFuzzyBorders(widths, resizeThresh),
 
         rangeFunc = function(range) {
-            return inRange(range, e.x);
+            return inRange(range, e.clientX);
         }
 
         normalizedBorders = fuzzyBorders.map(function(item) {
@@ -205,24 +209,33 @@ function init(self, divHeader) {
 
             if (mouseDown) {
                 if (borderHit > 0) {
-                    console.log('ree')
                     colResizeIndex = clickedCol;
                     activeCol = self.getColumns()[colResizeIndex];
                     activeColWidth = activeCol.getWidth();
-                    activeCol.setWidth(Math.max(0, activeColWidth + (e.x - x)));
+                    activeCol.setWidth(Math.max(0, activeColWidth + (e.clientX - x)));
                     self.paintAll();
                     resizing = true;
-                    x = e.x;
+                    x = e.clientX;
                 }
 
 
             }
-        } else if (mouseDown && dragHeader && (e.x >= headerRect.left) && (e.x <= (headerRect.left + headerRect.width)) && !resizingCols) {
+        } else if (mouseDown 
+            && dragHeader 
+            && (e.clientX >= headerRect.left) 
+            && (e.clientX <= (headerRect.left + headerRect.width)) 
+            && !resizingCols) {
 
             reordering = true;
 
-            xMovement = startingTrans[0] - (x - e.x);
+            if (e.target !== dragHeader) {
+                return;
+            }
+
+
+            xMovement = startingTrans[0] - (x - e.clientX);
             yMovement = 0;
+            lastX = e.clientX;
 
             movementString = ['translateX(',
                 xMovement,
@@ -232,6 +245,7 @@ function init(self, divHeader) {
             ].join('');
 
             dragHeader.style.transform = movementString;
+            dragHeader.style.webkitTransform = movementString;
             dragHeader.style.zIndex = 10;
 
             if (borderHit !== -1) {
@@ -246,12 +260,16 @@ function init(self, divHeader) {
             divHeader.style.cursor = 'auto';
             resizingCols = false;
         }
-    })
+    }, true)
 
-    document.addEventListener('mouseup', function(evnt) {
+    document.addEventListener('mouseup', function(e) {
         var reordered;
 
-        x = y = 0;
+        e.preventDefault();
+
+        x = y  = 0;
+
+        lastX = null;
 
         if (dragHeader) {
             dragHeader.parentNode.removeChild(dragHeader);
@@ -263,7 +281,9 @@ function init(self, divHeader) {
         resizing = false;
         reordering = false;
 
-        if (borderHit !== -1) {
+        if (borderHit !== -1
+            && (e.clientY >= headerRect.top) 
+            && (e.clientY <= (headerRect.top + headerRect.height)) ) {
             reordered = moveIdx(self.getColumns(), clickedCol, borderHit);
             self.setColumns(reordered);
             self.paintAll();
@@ -279,22 +299,23 @@ function init(self, divHeader) {
     })
 
 
-    divHeader.addEventListener('mousedown', function(evnt) {
+    divHeader.addEventListener('mousedown', function(e) {
+
         mouseDown = true;
 
         widths = self.getColumns().map(function(col) {
             return col.getWidth();
         });
 
-        clickedCol = contains(widths, evnt.offsetX);
+        clickedCol = contains(widths, e.offsetX);
 
-        x = evnt.x;
-        y = evnt.y;
+        x = e.clientX;
+        y = e.y;
 
 
         if (resizingCols) {
             // always resize l to r 
-            clickedCol = contains(widths, evnt.offsetX - resizeThresh);
+            clickedCol = contains(widths, e.offsetX - resizeThresh);
             return; // gross....
         }
 
@@ -317,7 +338,7 @@ function init(self, divHeader) {
         subCanvas.height = 20;
         subCanvas.style.opacity = '.45';
         subCanvas.style.position = 'absolute';
-        subCanvas.style.left = evnt.x - (evnt.offsetX - colOffset);
+        subCanvas.style.left = e.clientX - (e.offsetX - colOffset);
         subCanvas.style.top = headerRect.top;
         subCanvas.style.cursor = 'pointer';
 
